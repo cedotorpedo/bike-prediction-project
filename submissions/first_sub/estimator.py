@@ -40,8 +40,7 @@ def get_estimator():
     )
    
     NN = Sequential(
-        [               
-        #tf.keras.Input(shape=(162,)), 
+        [                
         Dense(25, activation ='relu'),
         Dense(15, activation ='relu'),
         Dense(1, activation ='linear')

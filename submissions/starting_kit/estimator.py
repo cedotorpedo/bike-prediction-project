@@ -27,12 +27,11 @@ def get_estimator():
     categorical_encoder = OneHotEncoder(handle_unknown="ignore")
     categorical_cols = ["counter_name", "site_name"]
 
-    preprocessor = ColumnTransformer(
-        [
+    preprocessor = ColumnTransformer([
             ("date", OneHotEncoder(handle_unknown="ignore"), date_cols),
             ("cat", categorical_encoder, categorical_cols),
-        ]
-    )
+        
+    ])
     regressor = Ridge()
 
     pipe = make_pipeline(date_encoder, preprocessor, regressor)

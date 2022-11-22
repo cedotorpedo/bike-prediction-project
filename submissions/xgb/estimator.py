@@ -6,7 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Ridge
-
+from pathlib import Path
+import numpy as np
 
 def _encode_dates(X):
     X = X.copy()  # modify a copy of X
@@ -19,6 +20,22 @@ def _encode_dates(X):
 
     # Finally we can drop the original columns from the dataframe
     return X.drop(columns=["date"])
+
+
+def _merge_external_data(X):
+    file_path = Path(__file__).parent / "external_data.csv"
+    df_ext = pd.read_csv(file_path, parse_dates=["date"])
+
+    X = X.copy()
+    # When using merge_asof left frame need to be sorted
+    X["orig_index"] = np.arange(X.shape[0])
+    X = pd.merge_asof(
+        X.sort_values("date"), df_ext[["date", "t"]].sort_values("date"), on="date"
+    )
+    # Sort back to the original order
+    X = X.sort_values("orig_index")
+    del X["orig_index"]
+    return X
 
 
 def get_estimator():
@@ -35,7 +52,13 @@ def get_estimator():
         ]
     )
 
-    xgb1 = xgb.XGBRegressor(max_depth=15, objective='reg:squarederror', learning_rate=0.1,n_estimators=120)
-    pipe = make_pipeline(date_encoder, preprocessor, xgb1)
+    xgb1 = xgb.XGBRegressor(max_depth=8, objective='reg:squarederror', learning_rate=0.2,n_estimators=110)
+
+    pipe = make_pipeline(
+        #FunctionTransformer(_merge_external_data, validate=False),
+        date_encoder,
+        preprocessor,
+        xgb1,
+    )
 
     return pipe
