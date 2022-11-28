@@ -30,7 +30,7 @@ def _merge_external_data(X):
     # When using merge_asof left frame need to be sorted
     X["orig_index"] = np.arange(X.shape[0])
     X = pd.merge_asof(
-        X.sort_values("date"), df_ext[["date", "ww","conf","t"]].sort_values("date"), on="date"
+        X.sort_values("date"), df_ext[["date", "nbas"]].sort_values("date"), on="date"
     )
     # Sort back to the original order
     X = X.sort_values("orig_index")
@@ -43,9 +43,9 @@ def get_estimator():
     date_cols = ["year", "month", "day", "weekday", "hour"]
 
     categorical_encoder = OneHotEncoder(handle_unknown="ignore")
-    categorical_cols = ["counter_name", "site_name","ww","conf"]
-    numerical_cols = ["t"]
-    #, "t"]
+    categorical_cols = ["counter_name", "site_name"]
+    numerical_cols = ["nbas"]
+
 
     preprocessor = ColumnTransformer(
         [

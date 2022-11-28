@@ -1,16 +1,13 @@
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import Ridge
-
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.activations import linear, relu, sigmoid
-
+import xgboost as xgb
 
 def _encode_dates(X):
     X = X.copy()  # modify a copy of X
@@ -25,34 +22,46 @@ def _encode_dates(X):
     return X.drop(columns=["date"])
 
 
+def _merge_external_data(X):
+    file_path = Path(__file__).parent / "external_data.csv"
+    df_ext = pd.read_csv(file_path, parse_dates=["date"])
+
+    X = X.copy()
+    # When using merge_asof left frame need to be sorted
+    X["orig_index"] = np.arange(X.shape[0])
+    X = pd.merge_asof(
+        X.sort_values("date"), df_ext[["date","conf", "strike_rate"]].sort_values("date"), on="date"
+    )
+    # Sort back to the original order
+    X = X.sort_values("orig_index")
+    del X["orig_index"]
+    return X
+
+
 def get_estimator():
     date_encoder = FunctionTransformer(_encode_dates)
     date_cols = ["year", "month", "day", "weekday", "hour"]
 
     categorical_encoder = OneHotEncoder(handle_unknown="ignore")
-    categorical_cols = ["counter_name", "site_name"]
+    categorical_cols = ["counter_name", "site_name","conf"]
+    numerical_cols = ["strike_rate"]
+
 
     preprocessor = ColumnTransformer(
         [
             ("date", OneHotEncoder(handle_unknown="ignore"), date_cols),
             ("cat", categorical_encoder, categorical_cols),
+            ('standard-scaler', StandardScaler(), numerical_cols)
         ]
     )
-   
-    NN = Sequential(
-        [                
-        Dense(25, activation ='relu'),
-        Dense(15, activation ='relu'),
-        Dense(1, activation ='linear')
-        ], name = "my_model" 
+    regressor = xgb.XGBRegressor(max_depth=8, objective='reg:squarederror', learning_rate=0.2,n_estimators=110)
+
+
+    pipe = make_pipeline(
+        FunctionTransformer(_merge_external_data, validate=False),
+        date_encoder,
+        preprocessor,
+        regressor
     )
-
-
-    NN.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-        loss='mse',
-        metrics=[tf.keras.metrics.RootMeanSquaredError()])
-
-    pipe = make_pipeline(date_encoder, preprocessor, NN)
 
     return pipe

@@ -30,7 +30,7 @@ def _merge_external_data(X):
     # When using merge_asof left frame need to be sorted
     X["orig_index"] = np.arange(X.shape[0])
     X = pd.merge_asof(
-        X.sort_values("date"), df_ext[["date", "ww","conf","t"]].sort_values("date"), on="date"
+        X.sort_values("date"), df_ext[["date", "ww","conf"]].sort_values("date"), on="date"
     )
     # Sort back to the original order
     X = X.sort_values("orig_index")
@@ -44,14 +44,12 @@ def get_estimator():
 
     categorical_encoder = OneHotEncoder(handle_unknown="ignore")
     categorical_cols = ["counter_name", "site_name","ww","conf"]
-    numerical_cols = ["t"]
-    #, "t"]
+    
 
     preprocessor = ColumnTransformer(
         [
             ("date", OneHotEncoder(handle_unknown="ignore"), date_cols),
-            ("cat", categorical_encoder, categorical_cols),
-            ('standard-scaler', StandardScaler(), numerical_cols)
+            ("cat", categorical_encoder, categorical_cols)
         ]
     )
     regressor = xgb.XGBRegressor(max_depth=8, objective='reg:squarederror', learning_rate=0.2,n_estimators=110)
